@@ -138,7 +138,7 @@ static func create_wall(pos: Vector2, size: Vector2) -> StaticBody2D:
 	return entity
 
 
-static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(100, 100)) -> StaticBody2D:
+static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(96, 96)) -> StaticBody2D:
 	var entity = StaticBody2D.new()
 	entity.name = "Workstation"
 	entity.position = pos
@@ -146,35 +146,28 @@ static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(100, 100
 
 	# Add workstation component
 	var workstation = WorkstationComponent.new()
-	workstation.interaction_radius = 100.0
+	workstation.interaction_radius = 120.0
 	workstation.attach(entity)
 	entity.set_meta("workstation", workstation)
 
-	# Add sprite component
-	var sprite = SpriteComponent.new()
-	sprite.color = Color(0.55, 0.35, 0.15)  # Brown color
-	sprite.size = ws_size
-	sprite.attach(entity)
-	entity.set_meta("sprite", sprite)
-
 	# Add collision component
 	var collision = CollisionComponent.new()
-	collision.shape_size = ws_size
+	collision.shape_size = Vector2(80, 60)
 	collision.is_static = true
 	collision.attach(entity)
 	entity.set_meta("collision", collision)
 
-	# Create visual
-	var color_rect = ColorRect.new()
-	color_rect.color = sprite.color
-	color_rect.size = ws_size
-	color_rect.position = -ws_size / 2
-	entity.add_child(color_rect)
+	# Create visual using desk sprite
+	var desk_sprite = Sprite2D.new()
+	var texture = _load_texture("res://assets/objects/desk_pc.png")
+	if texture:
+		desk_sprite.texture = texture
+	entity.add_child(desk_sprite)
 
 	# Create collision shape
 	var collision_shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
-	rect_shape.size = ws_size
+	rect_shape.size = collision.shape_size
 	collision_shape.shape = rect_shape
 	entity.add_child(collision_shape)
 

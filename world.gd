@@ -47,8 +47,8 @@ func _create_entities() -> void:
 	interaction_system.set_player(player)
 	work_system.set_player(player)
 
-	# Create workstation (brown square)
-	workstation = EntityFactory.create_workstation(Vector2(360, 300), Vector2(120, 120))
+	# Create workstation (desk with PC)
+	workstation = EntityFactory.create_workstation(Vector2(360, 280))
 	add_child(workstation)
 
 	# Create walls
