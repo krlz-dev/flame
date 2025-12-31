@@ -169,13 +169,13 @@ static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(96, 96))
 	# No offset - sprite centered on position = Y-sort at visual center
 	entity.add_child(desk_sprite)
 
-	# Small collision at desk center - allows walking around edges
-	# Player can pass behind (above) and in front (below)
+	# Collision extends from center to front edge
+	# Character stops when feet Y = desk Y (looks like standing at desk)
 	var collision_shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
-	rect_shape.size = Vector2(90, 25)  # Narrow collision band
+	rect_shape.size = Vector2(100, 55)  # Taller to cover front
 	collision_shape.shape = rect_shape
-	collision_shape.position = Vector2(0, 0)  # Centered
+	collision_shape.position = Vector2(0, 20)  # Shifted down toward front
 	entity.add_child(collision_shape)
 
 	return entity
