@@ -3,6 +3,11 @@ extends RefCounted
 
 ## Factory to create entities with components
 
+const CHARACTER_PATH = "res://assets/character/"
+const DIRECTIONS = ["south", "west", "east", "north"]
+const WALK_FRAMES = 6
+const ANIMATION_FPS = 10.0
+
 static func create_player(pos: Vector2) -> CharacterBody2D:
 	var entity = CharacterBody2D.new()
 	entity.name = "Player"
@@ -11,7 +16,7 @@ static func create_player(pos: Vector2) -> CharacterBody2D:
 
 	# Add components
 	var velocity = VelocityComponent.new()
-	velocity.max_speed = 300.0
+	velocity.max_speed = 200.0
 	velocity.attach(entity)
 	entity.set_meta("velocity", velocity)
 
@@ -19,14 +24,8 @@ static func create_player(pos: Vector2) -> CharacterBody2D:
 	input.attach(entity)
 	entity.set_meta("input", input)
 
-	var sprite = SpriteComponent.new()
-	sprite.color = Color(0.2, 0.6, 1.0)
-	sprite.size = Vector2(50, 50)
-	sprite.attach(entity)
-	entity.set_meta("sprite", sprite)
-
 	var collision = CollisionComponent.new()
-	collision.shape_size = Vector2(50, 50)
+	collision.shape_size = Vector2(30, 30)
 	collision.attach(entity)
 	entity.set_meta("collision", collision)
 
@@ -40,21 +39,67 @@ static func create_player(pos: Vector2) -> CharacterBody2D:
 	work.attach(entity)
 	entity.set_meta("work", work)
 
-	# Create visual representation
-	var color_rect = ColorRect.new()
-	color_rect.color = sprite.color
-	color_rect.size = sprite.size
-	color_rect.position = -sprite.size / 2
-	entity.add_child(color_rect)
+	# Add animation state component
+	var anim_state = AnimationStateComponent.new()
+	anim_state.attach(entity)
+	entity.set_meta("animation_state", anim_state)
+
+	# Create AnimatedSprite2D with SpriteFrames
+	var animated_sprite = AnimatedSprite2D.new()
+	animated_sprite.name = "AnimatedSprite2D"
+	animated_sprite.sprite_frames = _create_sprite_frames()
+	animated_sprite.play("idle_south")
+	entity.add_child(animated_sprite)
 
 	# Create collision shape
 	var collision_shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
 	rect_shape.size = collision.shape_size
 	collision_shape.shape = rect_shape
+	collision_shape.position = Vector2(0, 16)  # Offset for feet
 	entity.add_child(collision_shape)
 
 	return entity
+
+
+static func _create_sprite_frames() -> SpriteFrames:
+	var frames = SpriteFrames.new()
+
+	# Remove default animation
+	if frames.has_animation("default"):
+		frames.remove_animation("default")
+
+	# Create idle animations (using rotation images)
+	for dir in DIRECTIONS:
+		var anim_name = "idle_" + dir
+		frames.add_animation(anim_name)
+		frames.set_animation_loop(anim_name, true)
+		frames.set_animation_speed(anim_name, 1.0)
+
+		var texture = _load_texture(CHARACTER_PATH + "rotations/" + dir + ".png")
+		if texture:
+			frames.add_frame(anim_name, texture)
+
+	# Create walk animations
+	for dir in DIRECTIONS:
+		var anim_name = "walk_" + dir
+		frames.add_animation(anim_name)
+		frames.set_animation_loop(anim_name, true)
+		frames.set_animation_speed(anim_name, ANIMATION_FPS)
+
+		for i in range(WALK_FRAMES):
+			var frame_path = CHARACTER_PATH + "animations/walking-6-frames/" + dir + "/frame_%03d.png" % i
+			var texture = _load_texture(frame_path)
+			if texture:
+				frames.add_frame(anim_name, texture)
+
+	return frames
+
+
+static func _load_texture(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		return load(path)
+	return null
 
 
 static func create_wall(pos: Vector2, size: Vector2) -> StaticBody2D:

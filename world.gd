@@ -8,6 +8,7 @@ var input_system: InputSystem
 var movement_system: MovementSystem
 var interaction_system: InteractionSystem
 var work_system: WorkSystem
+var animation_system: AnimationSystem
 
 # Entities
 var player: CharacterBody2D
@@ -30,11 +31,13 @@ func _setup_systems() -> void:
 	movement_system = MovementSystem.new(self)
 	interaction_system = InteractionSystem.new(self)
 	work_system = WorkSystem.new(self)
+	animation_system = AnimationSystem.new(self)
 
 	systems.append(input_system)
 	systems.append(movement_system)
 	systems.append(interaction_system)
 	systems.append(work_system)
+	systems.append(animation_system)
 
 func _create_entities() -> void:
 	# Create player at center
