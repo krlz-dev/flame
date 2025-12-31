@@ -160,20 +160,23 @@ static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(96, 96))
 	entity.set_meta("collision", collision)
 
 	# Create visual using desk sprite
+	# Position is at BACK of desk (top edge) for Y-sorting
+	# Sprite offset pushes visual DOWN so front of desk has higher Y
 	var desk_sprite = Sprite2D.new()
 	var texture = _load_texture("res://assets/objects/desk_pc.png")
 	if texture:
 		desk_sprite.texture = texture
 	desk_sprite.scale = Vector2(1.5, 1.5)  # Scale up desk
-	desk_sprite.offset = Vector2(0, -50)  # Offset so base is at position (for Y-sort)
+	desk_sprite.offset = Vector2(0, 40)  # Positive = push down, back edge at position
 	entity.add_child(desk_sprite)
 
-	# Create collision shape (offset to match visual)
+	# Collision only covers back portion of desk (monitor area)
+	# Front (keyboard) area has no collision so player can get close
 	var collision_shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
-	rect_shape.size = Vector2(100, 40)
+	rect_shape.size = Vector2(110, 30)  # Wide but short
 	collision_shape.shape = rect_shape
-	collision_shape.position = Vector2(0, -30)  # Center of desk body
+	collision_shape.position = Vector2(0, 20)  # Only desk back/middle area
 	entity.add_child(collision_shape)
 
 	return entity
