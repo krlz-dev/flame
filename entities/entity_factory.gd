@@ -173,9 +173,9 @@ static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(96, 96))
 	# Character stops when feet Y = desk Y (looks like standing at desk)
 	var collision_shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
-	rect_shape.size = Vector2(100, 55)  # Taller to cover front
+	rect_shape.size = Vector2(100, 65)  # Extended to catch feet
 	collision_shape.shape = rect_shape
-	collision_shape.position = Vector2(0, 20)  # Shifted down toward front
+	collision_shape.position = Vector2(0, 25)  # Shifted down a bit more
 	entity.add_child(collision_shape)
 
 	return entity
