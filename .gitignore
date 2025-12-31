@@ -1,0 +1,33 @@
+# Godot 4+ specific ignores
+.godot/
+
+# Godot-specific ignores
+*.translation
+export_presets.cfg
+export_credentials.cfg
+
+# Imported textures and samples
+.import/
+
+# Android export
+android/build/
+
+# Logs
+*.log
+
+# Editor settings
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Claude Code
+.claude/
