@@ -50,8 +50,8 @@ func _create_entities() -> void:
 	interaction_system.set_player(player)
 	work_system.set_player(player)
 
-	# Create workstation (desk with PC)
-	workstation = EntityFactory.create_workstation(Vector2(360, 280))
+	# Create workstation (desk with PC) - position is visual center for Y-sort
+	workstation = EntityFactory.create_workstation(Vector2(360, 320))
 	add_child(workstation)
 
 	# Create walls
