@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="SquareRunner"
-run/main_scene="res://main.tscn"
+config/name="Flame"
+run/main_scene="res://menu.tscn"
 config/features=PackedStringArray("4.3", "Mobile")
 
 [display]

@@ -2,6 +2,8 @@ extends Node2D
 
 ## ECS World - manages all entities and systems
 
+const GOAL_AMOUNT = 1_000_000
+
 # Systems
 var systems: Array[System] = []
 var input_system: InputSystem
@@ -20,6 +22,9 @@ var workstation: StaticBody2D
 @onready var job_menu: JobMenu = $CanvasLayer/UI/JobMenu
 @onready var progress_bar: WorkProgressBar = $CanvasLayer/UI/ProgressBar
 @onready var money_display: MoneyDisplay = $CanvasLayer/UI/MoneyDisplay
+@onready var win_screen: WinScreen = $CanvasLayer/UI/WinScreen
+
+var game_won: bool = false
 
 func _ready() -> void:
 	# Enable Y-sorting for proper depth ordering
@@ -115,10 +120,16 @@ func _on_work_progress(progress: float) -> void:
 func _on_work_completed(reward: int) -> void:
 	progress_bar.hide_bar()
 
-	# Update money display
+	# Update money display and check win condition
 	if player.has_meta("money"):
 		var money_comp: MoneyComponent = player.get_meta("money")
 		money_display.set_amount(money_comp.amount)
+
+		# Check for win
+		if money_comp.amount >= GOAL_AMOUNT and not game_won:
+			game_won = true
+			win_screen.show_win()
+			return
 
 	# Re-enable action button if still near workstation
 	var nearby = interaction_system.get_nearby_workstation()
