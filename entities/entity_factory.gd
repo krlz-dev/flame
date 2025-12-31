@@ -48,8 +48,8 @@ static func create_player(pos: Vector2) -> CharacterBody2D:
 	var animated_sprite = AnimatedSprite2D.new()
 	animated_sprite.name = "AnimatedSprite2D"
 	animated_sprite.sprite_frames = _create_sprite_frames()
-	animated_sprite.scale = Vector2(1.8, 1.8)  # Scale up character
-	animated_sprite.offset = Vector2(0, -20)  # Offset so feet align with position
+	animated_sprite.scale = Vector2(2.3, 2.3)  # Taller character
+	animated_sprite.offset = Vector2(0, -24)  # Offset so feet align with position
 	animated_sprite.play("idle_south")
 	entity.add_child(animated_sprite)
 
