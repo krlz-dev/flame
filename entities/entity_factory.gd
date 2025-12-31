@@ -48,15 +48,17 @@ static func create_player(pos: Vector2) -> CharacterBody2D:
 	var animated_sprite = AnimatedSprite2D.new()
 	animated_sprite.name = "AnimatedSprite2D"
 	animated_sprite.sprite_frames = _create_sprite_frames()
+	animated_sprite.scale = Vector2(1.8, 1.8)  # Scale up character
+	animated_sprite.offset = Vector2(0, -20)  # Offset so feet align with position
 	animated_sprite.play("idle_south")
 	entity.add_child(animated_sprite)
 
 	# Create collision shape
 	var collision_shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
-	rect_shape.size = collision.shape_size
+	rect_shape.size = Vector2(40, 20)  # Wider, shorter for top-down
 	collision_shape.shape = rect_shape
-	collision_shape.position = Vector2(0, 16)  # Offset for feet
+	collision_shape.position = Vector2(0, 10)  # At feet level
 	entity.add_child(collision_shape)
 
 	return entity
@@ -162,13 +164,16 @@ static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(96, 96))
 	var texture = _load_texture("res://assets/objects/desk_pc.png")
 	if texture:
 		desk_sprite.texture = texture
+	desk_sprite.scale = Vector2(1.5, 1.5)  # Scale up desk
+	desk_sprite.offset = Vector2(0, -50)  # Offset so base is at position (for Y-sort)
 	entity.add_child(desk_sprite)
 
-	# Create collision shape
+	# Create collision shape (offset to match visual)
 	var collision_shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
-	rect_shape.size = collision.shape_size
+	rect_shape.size = Vector2(100, 40)
 	collision_shape.shape = rect_shape
+	collision_shape.position = Vector2(0, -30)  # Center of desk body
 	entity.add_child(collision_shape)
 
 	return entity

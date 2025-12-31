@@ -22,6 +22,9 @@ var workstation: StaticBody2D
 @onready var money_display: MoneyDisplay = $CanvasLayer/UI/MoneyDisplay
 
 func _ready() -> void:
+	# Enable Y-sorting for proper depth ordering
+	y_sort_enabled = true
+
 	_setup_systems()
 	_create_entities()
 	_connect_signals()
