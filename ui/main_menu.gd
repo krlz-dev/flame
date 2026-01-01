@@ -117,4 +117,4 @@ func _format_money(amount: int) -> String:
 	return result
 
 func _on_start_pressed() -> void:
-	get_tree().change_scene_to_file("res://main.tscn")
+	get_tree().change_scene_to_file("res://intro.tscn")
