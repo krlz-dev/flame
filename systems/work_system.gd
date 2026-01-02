@@ -6,8 +6,12 @@ extends System
 signal work_started(job_id: int)
 signal work_progress(progress: float)
 signal work_completed(reward: int)
+signal bot_loop_tick(job_id: int)
 
 var player: Node = null
+var bot_running: bool = false
+var bot_delay_timer: float = 0.0
+const BOT_DELAY = 0.3  # Short delay between bot jobs
 
 # Job definitions: [duration, reward]
 const JOBS = {
@@ -16,10 +20,13 @@ const JOBS = {
 	3: {"name": "Job 3 - Quick Task", "duration": 3.0, "reward": 1}
 }
 
+# Bot jobs run faster (40% of normal duration)
+const BOT_SPEED_MULTIPLIER = 0.4
+
 func set_player(p: Node) -> void:
 	player = p
 
-func start_job(job_id: int) -> bool:
+func start_job(job_id: int, is_bot: bool = false) -> bool:
 	if not player or not player.has_meta("work"):
 		return false
 
@@ -31,9 +38,29 @@ func start_job(job_id: int) -> bool:
 		return false
 
 	var job = JOBS[job_id]
-	work_comp.start_job(job_id, job.duration, job.reward)
+	var duration = job.duration
+	if is_bot:
+		duration *= BOT_SPEED_MULTIPLIER  # Bot runs faster
+
+	work_comp.start_job(job_id, duration, job.reward)
 	work_started.emit(job_id)
 	return true
+
+func start_bot() -> void:
+	bot_running = true
+	_start_random_bot_job()
+
+func stop_bot() -> void:
+	bot_running = false
+
+func is_bot_running() -> bool:
+	return bot_running
+
+func _start_random_bot_job() -> void:
+	var job_ids = JOBS.keys()
+	var random_job = job_ids[randi() % job_ids.size()]
+	start_job(random_job, true)
+	bot_loop_tick.emit(random_job)
 
 func cancel_job() -> void:
 	if not player or not player.has_meta("work"):
@@ -43,6 +70,13 @@ func cancel_job() -> void:
 
 func process_system(delta: float) -> void:
 	if not player or not player.has_meta("work"):
+		return
+
+	# Handle bot delay timer
+	if bot_running and bot_delay_timer > 0:
+		bot_delay_timer -= delta
+		if bot_delay_timer <= 0:
+			_start_random_bot_job()
 		return
 
 	var work_comp: WorkComponent = player.get_meta("work")
@@ -66,6 +100,10 @@ func _complete_work(work_comp: WorkComponent) -> void:
 
 	work_completed.emit(reward)
 	work_comp.reset()
+
+	# If bot is running, start next job after short delay
+	if bot_running:
+		bot_delay_timer = BOT_DELAY
 
 func is_working() -> bool:
 	if not player or not player.has_meta("work"):

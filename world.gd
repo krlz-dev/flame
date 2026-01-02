@@ -3,6 +3,7 @@ extends Node2D
 ## ECS World - manages all entities and systems
 
 const GOAL_AMOUNT = 1_000_000
+const MILESTONE_AMOUNT = 100
 
 # Systems
 var systems: Array[System] = []
@@ -24,7 +25,14 @@ var workstation: StaticBody2D
 @onready var money_display: MoneyDisplay = $CanvasLayer/UI/MoneyDisplay
 @onready var win_screen: WinScreen = $CanvasLayer/UI/WinScreen
 
+# Dialog for milestones
+var dialog_container: Control
+var dialog_box: DialogBox
+var architect_portrait: Texture2D
+
 var game_won: bool = false
+var milestone_reached: bool = false
+var bot_unlocked: bool = false
 
 func _ready() -> void:
 	# Enable Y-sorting for proper depth ordering
@@ -32,7 +40,30 @@ func _ready() -> void:
 
 	_setup_systems()
 	_create_entities()
+	_setup_dialog()
 	_connect_signals()
+
+func _setup_dialog() -> void:
+	# Load architect portrait
+	architect_portrait = load("res://assets/npc/architect_portrait.png")
+
+	# Create dialog container with dark background (like intro scene)
+	dialog_container = Control.new()
+	dialog_container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dialog_container.visible = false
+	$CanvasLayer.add_child(dialog_container)
+
+	# Dark background
+	var bg = ColorRect.new()
+	bg.color = Color(0.05, 0.05, 0.08)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dialog_container.add_child(bg)
+
+	# Create dialog box for milestone dialogs
+	dialog_box = DialogBox.new()
+	dialog_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dialog_container.add_child(dialog_box)
+	dialog_box.dialog_finished.connect(_on_milestone_dialog_finished)
 
 func _setup_systems() -> void:
 	input_system = InputSystem.new(self)
@@ -82,11 +113,13 @@ func _connect_signals() -> void:
 
 	# Job menu
 	job_menu.job_selected.connect(_on_job_selected)
+	job_menu.bot_selected.connect(_on_bot_selected)
 
 	# Work system
 	work_system.work_started.connect(_on_work_started)
 	work_system.work_progress.connect(_on_work_progress)
 	work_system.work_completed.connect(_on_work_completed)
+	work_system.bot_loop_tick.connect(_on_bot_loop_tick)
 
 func _on_joystick_input(direction: Vector2) -> void:
 	# Disable movement while working
@@ -109,6 +142,16 @@ func _on_job_selected(job_id: int) -> void:
 	# Start the selected job
 	work_system.start_job(job_id)
 
+func _on_bot_selected() -> void:
+	# Start the bot auto-loop
+	work_system.start_bot()
+	action_button.set_enabled(false)
+
+func _on_bot_loop_tick(job_id: int) -> void:
+	# Update progress bar with current bot job
+	var job_info = work_system.get_job_info(job_id)
+	progress_bar.show_bar("BOT: " + job_info.get("name", "Working"))
+
 func _on_work_started(job_id: int) -> void:
 	var job_info = work_system.get_job_info(job_id)
 	progress_bar.show_bar(job_info.get("name", "Working"))
@@ -118,7 +161,9 @@ func _on_work_progress(progress: float) -> void:
 	progress_bar.set_progress(progress)
 
 func _on_work_completed(reward: int) -> void:
-	progress_bar.hide_bar()
+	# Don't hide progress bar if bot is running (it will show next job)
+	if not work_system.is_bot_running():
+		progress_bar.hide_bar()
 
 	# Update money display and check win condition
 	if player.has_meta("money"):
@@ -128,8 +173,41 @@ func _on_work_completed(reward: int) -> void:
 		# Check for win
 		if money_comp.amount >= GOAL_AMOUNT and not game_won:
 			game_won = true
+			work_system.stop_bot()  # Stop bot on win
+			progress_bar.hide_bar()
 			win_screen.show_win()
 			return
+
+		# Check for $100 milestone - unlock bot
+		if money_comp.amount >= MILESTONE_AMOUNT and not milestone_reached:
+			milestone_reached = true
+			_show_milestone_dialog()
+			return
+
+	# Re-enable action button if still near workstation (and not botting)
+	if not work_system.is_bot_running():
+		var nearby = interaction_system.get_nearby_workstation()
+		action_button.set_enabled(nearby != null)
+
+func _show_milestone_dialog() -> void:
+	var lines: Array[String] = [
+		"Well, well... $100 already.",
+		"At this pace, you'll reach a million in about... *calculates*",
+		"...roughly 10,000 more work sessions. Give or take.",
+		"That's assuming you don't sleep. Or eat. Or blink.",
+		"But there might be... another way.",
+		"What if I told you the system has certain... exploitable patterns?",
+		"I've unlocked something for you. Check your job menu.",
+		"'Create Bot Script' - it automates the grind. Faster. Smarter.",
+		"Use it wisely. Or recklessly. I'm not your supervisor."
+	]
+	dialog_container.visible = true
+	dialog_box.start_dialog(lines, architect_portrait, "The Architect")
+
+func _on_milestone_dialog_finished() -> void:
+	dialog_container.visible = false
+	bot_unlocked = true
+	job_menu.unlock_bot()
 
 	# Re-enable action button if still near workstation
 	var nearby = interaction_system.get_nearby_workstation()

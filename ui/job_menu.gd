@@ -4,6 +4,7 @@ extends Control
 ## Job selection menu UI
 
 signal job_selected(job_id: int)
+signal bot_selected
 signal menu_closed
 
 var panel: PanelContainer
@@ -11,6 +12,8 @@ var vbox: VBoxContainer
 var title_label: Label
 var job_buttons: Array[Button] = []
 var close_button: Button
+var bot_button: Button
+var bot_unlocked: bool = false
 
 const JOBS = {
 	1: {"name": "Heavy Work", "time": "10s", "reward": "$50"},
@@ -37,7 +40,7 @@ func _create_ui() -> void:
 
 	# Panel
 	panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(300, 350)
+	panel.custom_minimum_size = Vector2(300, 420)
 	var panel_style = StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.15, 0.15, 0.2, 0.95)
 	panel_style.corner_radius_top_left = 15
@@ -82,6 +85,11 @@ func _create_ui() -> void:
 		var btn = _create_job_button(job_id, job.name, job.time, job.reward)
 		vbox.add_child(btn)
 		job_buttons.append(btn)
+
+	# Bot button (hidden until unlocked)
+	bot_button = _create_bot_button()
+	bot_button.visible = false
+	vbox.add_child(bot_button)
 
 	# Close button
 	close_button = Button.new()
@@ -146,3 +154,38 @@ func show_menu() -> void:
 
 func hide_menu() -> void:
 	visible = false
+
+func unlock_bot() -> void:
+	bot_unlocked = true
+	bot_button.visible = true
+
+func _create_bot_button() -> Button:
+	var btn = Button.new()
+	btn.text = "Bot Script\nAuto-loop - FAST!"
+	btn.custom_minimum_size = Vector2(0, 60)
+	btn.pressed.connect(_on_bot_pressed)
+
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.6, 0.2, 0.6, 0.8)  # Purple for hacker vibe
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	btn.add_theme_stylebox_override("normal", style)
+
+	var style_hover = StyleBoxFlat.new()
+	style_hover.bg_color = Color(0.7, 0.3, 0.7, 0.9)
+	style_hover.corner_radius_top_left = 8
+	style_hover.corner_radius_top_right = 8
+	style_hover.corner_radius_bottom_left = 8
+	style_hover.corner_radius_bottom_right = 8
+	btn.add_theme_stylebox_override("hover", style_hover)
+
+	btn.add_theme_font_size_override("font_size", 16)
+	btn.add_theme_color_override("font_color", Color(0.9, 0.7, 1.0))
+
+	return btn
+
+func _on_bot_pressed() -> void:
+	bot_selected.emit()
+	hide_menu()
