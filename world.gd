@@ -90,6 +90,19 @@ func _create_entities() -> void:
 	workstation = EntityFactory.create_workstation(Vector2(360, 320))
 	add_child(workstation)
 
+	# Create garage props
+	var old_car = EntityFactory.create_old_car(Vector2(580, 750))
+	add_child(old_car)
+
+	var shelving = EntityFactory.create_shelving(Vector2(120, 200))
+	add_child(shelving)
+
+	var cables1 = EntityFactory.create_cables(Vector2(250, 450))
+	add_child(cables1)
+
+	var cables2 = EntityFactory.create_cables(Vector2(500, 550))
+	add_child(cables2)
+
 	# Create walls
 	var top_wall = EntityFactory.create_wall(Vector2(360, 10), Vector2(720, 20))
 	var bottom_wall = EntityFactory.create_wall(Vector2(360, 1080), Vector2(720, 20))

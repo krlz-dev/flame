@@ -34,3 +34,6 @@ func _update_animation(entity: Node, anim_state: AnimationStateComponent) -> voi
 		var anim_name = anim_state.get_animation_name()
 		if animated_sprite.sprite_frames.has_animation(anim_name):
 			animated_sprite.play(anim_name)
+
+		# No flip needed - we have proper animations for all directions
+		animated_sprite.flip_h = false

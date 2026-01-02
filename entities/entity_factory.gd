@@ -5,8 +5,16 @@ extends RefCounted
 
 const CHARACTER_PATH = "res://assets/character/"
 const DIRECTIONS = ["south", "west", "east", "north"]
-const WALK_FRAMES = 6
+const WALK_FRAMES = 8
 const ANIMATION_FPS = 10.0
+
+# Map directions to available walk animations (now have all 4 main directions)
+const WALK_DIR_MAP = {
+	"south": "south",
+	"west": "west",
+	"east": "east",
+	"north": "north"
+}
 
 static func create_player(pos: Vector2) -> CharacterBody2D:
 	var entity = CharacterBody2D.new()
@@ -89,11 +97,18 @@ static func _create_sprite_frames() -> SpriteFrames:
 		frames.set_animation_loop(anim_name, true)
 		frames.set_animation_speed(anim_name, ANIMATION_FPS)
 
+		var source_dir = WALK_DIR_MAP[dir]
+		var should_flip = (dir == "east")  # Flip west to make east
+
 		for i in range(WALK_FRAMES):
-			var frame_path = CHARACTER_PATH + "animations/walking-6-frames/" + dir + "/frame_%03d.png" % i
+			var frame_path = CHARACTER_PATH + "animations/walking-8-frames/" + source_dir + "/frame_%03d.png" % i
 			var texture = _load_texture(frame_path)
 			if texture:
-				frames.add_frame(anim_name, texture)
+				if should_flip:
+					# Create flipped version using AtlasTexture hack or just add and flip in sprite
+					frames.add_frame(anim_name, texture)
+				else:
+					frames.add_frame(anim_name, texture)
 
 	return frames
 
@@ -159,14 +174,13 @@ static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(96, 96))
 	collision.attach(entity)
 	entity.set_meta("collision", collision)
 
-	# Create visual using desk sprite
-	# Position at VISUAL CENTER for Y-sorting (half behind, half in front effect)
+	# Create visual using new hacker PC desk sprite
 	var desk_sprite = Sprite2D.new()
-	var texture = _load_texture("res://assets/objects/desk_pc.png")
+	var texture = _load_texture("res://assets/props/pc_desk.png")
 	if texture:
 		desk_sprite.texture = texture
-	desk_sprite.scale = Vector2(1.5, 1.5)  # Scale up desk (144x144 visual)
-	# No offset - sprite centered on position = Y-sort at visual center
+	desk_sprite.scale = Vector2(1.8, 1.8)  # Scale up desk
+	desk_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # Pixel art crisp
 	entity.add_child(desk_sprite)
 
 	# Collision extends from center to front edge
@@ -177,5 +191,97 @@ static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(96, 96))
 	collision_shape.shape = rect_shape
 	collision_shape.position = Vector2(0, 25)  # Shifted down a bit more
 	entity.add_child(collision_shape)
+
+	return entity
+
+
+static func create_prop(pos: Vector2, texture_path: String, scale_factor: float = 1.5, has_collision: bool = false, collision_size: Vector2 = Vector2(50, 30)) -> Node2D:
+	var entity: Node2D
+
+	if has_collision:
+		entity = StaticBody2D.new()
+		var collision_shape = CollisionShape2D.new()
+		var rect_shape = RectangleShape2D.new()
+		rect_shape.size = collision_size
+		collision_shape.shape = rect_shape
+		collision_shape.position = Vector2(0, collision_size.y / 4)
+		entity.add_child(collision_shape)
+	else:
+		entity = Node2D.new()
+
+	entity.name = "Prop"
+	entity.position = pos
+
+	var sprite = Sprite2D.new()
+	var texture = _load_texture(texture_path)
+	if texture:
+		sprite.texture = texture
+	sprite.scale = Vector2(scale_factor, scale_factor)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	entity.add_child(sprite)
+
+	return entity
+
+
+static func create_old_car(pos: Vector2) -> StaticBody2D:
+	var entity = StaticBody2D.new()
+	entity.name = "OldCar"
+	entity.position = pos
+
+	var sprite = Sprite2D.new()
+	var texture = _load_texture("res://assets/props/old_car.png")
+	if texture:
+		sprite.texture = texture
+	sprite.scale = Vector2(2.0, 2.0)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	entity.add_child(sprite)
+
+	# Large collision for the car
+	var collision_shape = CollisionShape2D.new()
+	var rect_shape = RectangleShape2D.new()
+	rect_shape.size = Vector2(200, 100)
+	collision_shape.shape = rect_shape
+	collision_shape.position = Vector2(0, 20)
+	entity.add_child(collision_shape)
+
+	return entity
+
+
+static func create_shelving(pos: Vector2) -> StaticBody2D:
+	var entity = StaticBody2D.new()
+	entity.name = "Shelving"
+	entity.position = pos
+
+	var sprite = Sprite2D.new()
+	var texture = _load_texture("res://assets/props/shelving.png")
+	if texture:
+		sprite.texture = texture
+	sprite.scale = Vector2(1.8, 1.8)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	entity.add_child(sprite)
+
+	var collision_shape = CollisionShape2D.new()
+	var rect_shape = RectangleShape2D.new()
+	rect_shape.size = Vector2(120, 50)
+	collision_shape.shape = rect_shape
+	collision_shape.position = Vector2(0, 10)
+	entity.add_child(collision_shape)
+
+	return entity
+
+
+static func create_cables(pos: Vector2) -> Node2D:
+	# Cables are decorative, no collision
+	var entity = Node2D.new()
+	entity.name = "Cables"
+	entity.position = pos
+
+	var sprite = Sprite2D.new()
+	var texture = _load_texture("res://assets/props/cables.png")
+	if texture:
+		sprite.texture = texture
+	sprite.scale = Vector2(1.5, 1.5)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	entity.add_child(sprite)
 
 	return entity
