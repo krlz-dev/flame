@@ -19,7 +19,6 @@ var workstation: StaticBody2D
 
 # UI References
 @onready var joystick: Joystick = $CanvasLayer/UI/Joystick
-@onready var action_button: ActionButton = $CanvasLayer/UI/ActionButton
 @onready var job_menu: JobMenu = $CanvasLayer/UI/JobMenu
 @onready var progress_bar: WorkProgressBar = $CanvasLayer/UI/ProgressBar
 @onready var money_display: MoneyDisplay = $CanvasLayer/UI/MoneyDisplay
@@ -34,14 +33,51 @@ var game_won: bool = false
 var milestone_reached: bool = false
 var bot_unlocked: bool = false
 
+# Interaction indicator
+var interaction_indicator: Label
+var can_interact: bool = false
+var indicator_tween: Tween
+
 func _ready() -> void:
 	# Enable Y-sorting for proper depth ordering
 	y_sort_enabled = true
 
 	_setup_systems()
 	_create_entities()
+	_setup_interaction_indicator()
+	_setup_lighting()
 	_setup_dialog()
 	_connect_signals()
+
+func _setup_lighting() -> void:
+	# Darken the entire scene
+	var canvas_modulate = CanvasModulate.new()
+	canvas_modulate.color = Color(0.15, 0.15, 0.2)  # Dark blue-ish tint
+	add_child(canvas_modulate)
+
+	# Create PC screen light
+	var pc_light = PointLight2D.new()
+	pc_light.position = workstation.position + Vector2(0, -20)  # Slightly above desk
+	pc_light.color = Color(0.6, 0.8, 1.0)  # Cool monitor blue
+	pc_light.energy = 1.5
+	pc_light.texture = _create_light_texture()
+	pc_light.texture_scale = 4.0  # Large enough to see around
+	pc_light.blend_mode = PointLight2D.BLEND_MODE_ADD
+	add_child(pc_light)
+
+func _create_light_texture() -> Texture2D:
+	# Create a radial gradient texture for the light
+	var image = Image.create(128, 128, false, Image.FORMAT_RGBA8)
+	var center = Vector2(64, 64)
+
+	for x in range(128):
+		for y in range(128):
+			var dist = Vector2(x, y).distance_to(center) / 64.0
+			var alpha = clamp(1.0 - dist, 0.0, 1.0)
+			alpha = alpha * alpha  # Quadratic falloff for softer edges
+			image.set_pixel(x, y, Color(1, 1, 1, alpha))
+
+	return ImageTexture.create_from_image(image)
 
 func _setup_dialog() -> void:
 	# Load architect portrait
@@ -78,48 +114,139 @@ func _setup_systems() -> void:
 	systems.append(work_system)
 	systems.append(animation_system)
 
+func _create_floor() -> void:
+	# Create tiled floor using garage tileset (4x4 grid = 16 tiles)
+	var floor_texture = load("res://assets/props/garage_floor_tileset.png")
+	if not floor_texture:
+		return
+
+	var floor_container = Node2D.new()
+	floor_container.name = "Floor"
+	floor_container.z_index = -10
+	add_child(floor_container)
+
+	# Tileset is 4x4 grid (16 tiles), each tile is 32x32
+	var grid_cols = 4
+	var grid_rows = 4
+	var tile_size = Vector2(32, 32)
+
+	# Stage bounds (narrower, positioned lower)
+	var stage_width = 600
+	var stage_height = 550
+	var stage_offset_x = 60
+	var stage_offset_y = 250
+	var tiles_x = int(ceil(stage_width / tile_size.x))
+	var tiles_y = int(ceil(stage_height / tile_size.y))
+
+	# Use various tiles for natural variation
+	var floor_tiles = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+
+	# Seed for consistent but varied pattern
+	var rng = RandomNumberGenerator.new()
+	rng.seed = 12345
+
+	for y in range(tiles_y):
+		for x in range(tiles_x):
+			var sprite = Sprite2D.new()
+			sprite.texture = floor_texture
+			sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+			# Pick a random tile for natural variation
+			var tile_idx = floor_tiles[rng.randi() % floor_tiles.size()]
+			var tile_x = tile_idx % grid_cols
+			var tile_y = tile_idx / grid_cols
+
+			sprite.region_enabled = true
+			sprite.region_rect = Rect2(tile_x * tile_size.x, tile_y * tile_size.y, tile_size.x, tile_size.y)
+			sprite.position = Vector2(stage_offset_x + x * tile_size.x + tile_size.x / 2, stage_offset_y + y * tile_size.y + tile_size.y / 2)
+			floor_container.add_child(sprite)
+
 func _create_entities() -> void:
+	# Create tiled floor background
+	_create_floor()
+
+	# Stage bounds for positioning (narrower, lower on screen)
+	var stage_x = 60
+	var stage_y = 250
+	var stage_w = 600
+	var stage_h = 550
+	var center_x = stage_x + stage_w / 2  # 360
+
 	# Create player at center
-	player = EntityFactory.create_player(Vector2(360, 600))
+	player = EntityFactory.create_player(Vector2(center_x, stage_y + 380))
 	add_child(player)
 	input_system.set_target(player)
 	interaction_system.set_player(player)
 	work_system.set_player(player)
 
-	# Create workstation (desk with PC) - position is visual center for Y-sort
-	workstation = EntityFactory.create_workstation(Vector2(360, 320))
+	# Create workstation (desk with PC)
+	workstation = EntityFactory.create_workstation(Vector2(center_x, stage_y + 150))
 	add_child(workstation)
 
-	# Create garage props
-	var old_car = EntityFactory.create_old_car(Vector2(580, 750))
-	add_child(old_car)
+	# Create garage props - two shelving units
+	var shelving1 = EntityFactory.create_shelving(Vector2(stage_x + 100, stage_y + 60))
+	add_child(shelving1)
 
-	var shelving = EntityFactory.create_shelving(Vector2(120, 200))
-	add_child(shelving)
+	var shelving2 = EntityFactory.create_shelving(Vector2(stage_x + stage_w - 100, stage_y + 60))
+	add_child(shelving2)
 
-	var cables1 = EntityFactory.create_cables(Vector2(250, 450))
+	var cables1 = EntityFactory.create_cables(Vector2(stage_x + 140, stage_y + 280))
 	add_child(cables1)
 
-	var cables2 = EntityFactory.create_cables(Vector2(500, 550))
+	var cables2 = EntityFactory.create_cables(Vector2(stage_x + stage_w - 140, stage_y + 320))
 	add_child(cables2)
 
-	# Create walls
-	var top_wall = EntityFactory.create_wall(Vector2(360, 10), Vector2(720, 20))
-	var bottom_wall = EntityFactory.create_wall(Vector2(360, 1080), Vector2(720, 20))
-	var left_wall = EntityFactory.create_wall(Vector2(10, 545), Vector2(20, 1070))
-	var right_wall = EntityFactory.create_wall(Vector2(710, 545), Vector2(20, 1070))
+	# Create walls with collision offsets (top extends down, bottom extends up)
+	var top_wall = EntityFactory.create_wall(Vector2(center_x, stage_y), Vector2(stage_w, 20), Vector2(0, 20))
+	var bottom_wall = EntityFactory.create_wall(Vector2(center_x, stage_y + stage_h + 25), Vector2(stage_w, 20), Vector2(0, 40))
+	var left_wall = EntityFactory.create_wall(Vector2(stage_x, stage_y + stage_h / 2 + 12), Vector2(20, stage_h + 40))
+	var right_wall = EntityFactory.create_wall(Vector2(stage_x + stage_w, stage_y + stage_h / 2 + 12), Vector2(20, stage_h + 40))
 
 	add_child(top_wall)
 	add_child(bottom_wall)
 	add_child(left_wall)
 	add_child(right_wall)
 
+func _setup_interaction_indicator() -> void:
+	# Create "!" indicator above workstation
+	interaction_indicator = Label.new()
+	interaction_indicator.text = "!"
+	interaction_indicator.add_theme_font_size_override("font_size", 48)
+	interaction_indicator.add_theme_color_override("font_color", Color(1, 0.9, 0.2))
+	interaction_indicator.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	interaction_indicator.position = workstation.position + Vector2(-15, -100)
+	interaction_indicator.visible = false
+	interaction_indicator.modulate.a = 0.0
+	interaction_indicator.z_index = 100
+	interaction_indicator.pivot_offset = Vector2(15, 24)  # Center pivot for shake
+	add_child(interaction_indicator)
+
+func _show_indicator() -> void:
+	if indicator_tween:
+		indicator_tween.kill()
+	interaction_indicator.visible = true
+	indicator_tween = create_tween()
+	indicator_tween.tween_property(interaction_indicator, "modulate:a", 1.0, 0.3)
+
+func _hide_indicator() -> void:
+	if indicator_tween:
+		indicator_tween.kill()
+	indicator_tween = create_tween()
+	indicator_tween.tween_property(interaction_indicator, "modulate:a", 0.0, 0.3)
+	indicator_tween.tween_callback(func(): interaction_indicator.visible = false)
+
+func _shake_indicator() -> void:
+	var shake_tween = create_tween()
+	var original_pos = workstation.position + Vector2(-15, -100)
+	shake_tween.tween_property(interaction_indicator, "position", original_pos + Vector2(-5, 0), 0.05)
+	shake_tween.tween_property(interaction_indicator, "position", original_pos + Vector2(5, 0), 0.05)
+	shake_tween.tween_property(interaction_indicator, "position", original_pos + Vector2(-3, 0), 0.05)
+	shake_tween.tween_property(interaction_indicator, "position", original_pos + Vector2(3, 0), 0.05)
+	shake_tween.tween_property(interaction_indicator, "position", original_pos, 0.05)
+
 func _connect_signals() -> void:
 	# Joystick
 	joystick.input_changed.connect(_on_joystick_input)
-
-	# Action button
-	action_button.action_pressed.connect(_on_action_pressed)
 
 	# Interaction system
 	interaction_system.player_near_workstation.connect(_on_player_near_workstation)
@@ -142,14 +269,26 @@ func _on_joystick_input(direction: Vector2) -> void:
 		input_system.receive_input(direction)
 
 func _on_player_near_workstation(_workstation: Node, is_near: bool) -> void:
-	# Enable/disable action button based on proximity
+	# Show/hide interaction indicator based on proximity
 	if not work_system.is_working():
-		action_button.set_enabled(is_near)
+		can_interact = is_near
+		if is_near:
+			_show_indicator()
+		else:
+			_hide_indicator()
 
-func _on_action_pressed() -> void:
-	# Show job menu when action is pressed
-	if interaction_system.get_nearby_workstation():
-		job_menu.show_menu()
+func _input(event: InputEvent) -> void:
+	# Handle touch on workstation to interact
+	if event is InputEventScreenTouch and event.pressed:
+		if can_interact and not work_system.is_working():
+			# Check if touch is near workstation
+			var touch_pos = event.position
+			var ws_screen_pos = workstation.get_global_transform_with_canvas().origin
+			var distance = touch_pos.distance_to(ws_screen_pos)
+			if distance < 150:  # Touch radius around workstation
+				_shake_indicator()
+				job_menu.show_menu()
+				get_viewport().set_input_as_handled()
 
 func _on_job_selected(job_id: int) -> void:
 	# Start the selected job
@@ -158,7 +297,8 @@ func _on_job_selected(job_id: int) -> void:
 func _on_bot_selected() -> void:
 	# Start the bot auto-loop
 	work_system.start_bot()
-	action_button.set_enabled(false)
+	can_interact = false
+	_hide_indicator()
 
 func _on_bot_loop_tick(job_id: int) -> void:
 	# Update progress bar with current bot job
@@ -168,7 +308,7 @@ func _on_bot_loop_tick(job_id: int) -> void:
 func _on_work_started(job_id: int) -> void:
 	var job_info = work_system.get_job_info(job_id)
 	progress_bar.show_bar(job_info.get("name", "Working"))
-	action_button.set_enabled(false)
+	_hide_indicator()
 
 func _on_work_progress(progress: float) -> void:
 	progress_bar.set_progress(progress)
@@ -197,10 +337,12 @@ func _on_work_completed(reward: int) -> void:
 			_show_milestone_dialog()
 			return
 
-	# Re-enable action button if still near workstation (and not botting)
+	# Re-enable interaction if still near workstation (and not botting)
 	if not work_system.is_bot_running():
 		var nearby = interaction_system.get_nearby_workstation()
-		action_button.set_enabled(nearby != null)
+		can_interact = nearby != null
+		if nearby:
+			_show_indicator()
 
 func _show_milestone_dialog() -> void:
 	var lines: Array[String] = [
@@ -222,9 +364,11 @@ func _on_milestone_dialog_finished() -> void:
 	bot_unlocked = true
 	job_menu.unlock_bot()
 
-	# Re-enable action button if still near workstation
+	# Re-enable interaction if still near workstation
 	var nearby = interaction_system.get_nearby_workstation()
-	action_button.set_enabled(nearby != null)
+	can_interact = nearby != null
+	if nearby:
+		_show_indicator()
 
 func _physics_process(delta: float) -> void:
 	for system in systems:

@@ -119,7 +119,7 @@ static func _load_texture(path: String) -> Texture2D:
 	return null
 
 
-static func create_wall(pos: Vector2, size: Vector2) -> StaticBody2D:
+static func create_wall(pos: Vector2, size: Vector2, collision_offset: Vector2 = Vector2.ZERO) -> StaticBody2D:
 	var entity = StaticBody2D.new()
 	entity.name = "Wall"
 	entity.position = pos
@@ -145,11 +145,12 @@ static func create_wall(pos: Vector2, size: Vector2) -> StaticBody2D:
 	color_rect.position = -size / 2
 	entity.add_child(color_rect)
 
-	# Create collision
+	# Create collision with optional offset for player feet collision
 	var collision_shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
-	rect_shape.size = size
+	rect_shape.size = Vector2(size.x, size.y + 40)
 	collision_shape.shape = rect_shape
+	collision_shape.position = collision_offset
 	entity.add_child(collision_shape)
 
 	return entity
@@ -262,7 +263,7 @@ static func create_shelving(pos: Vector2) -> StaticBody2D:
 
 	var collision_shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
-	rect_shape.size = Vector2(120, 50)
+	rect_shape.size = Vector2(120, 100)
 	collision_shape.shape = rect_shape
 	collision_shape.position = Vector2(0, 10)
 	entity.add_child(collision_shape)
