@@ -39,17 +39,95 @@ var interaction_indicator: Label
 var can_interact: bool = false
 var indicator_tween: Tween
 
+# Hacking effects
+var camera: Camera2D
+var hacking_effects_container: Node2D
+var hacking_symbols_timer: Timer
+var is_hacking: bool = false
+const HACKING_SYMBOLS = ["0", "1", "{", "}", "<", ">", "/", "\\", "$", "#", "@", "!", "*", "&", "%", "=", "+", "-", "~", "^"]
+
 func _ready() -> void:
 	# Enable Y-sorting for proper depth ordering
 	y_sort_enabled = true
 
 	_setup_systems()
 	_create_entities()
+	_setup_camera()
 	_setup_interaction_indicator()
 	_setup_action_button()
+	_setup_hacking_effects()
 	_setup_lighting()
 	_setup_dialog()
 	_connect_signals()
+
+func _setup_camera() -> void:
+	# Create camera for zoom effects
+	camera = Camera2D.new()
+	camera.position = Vector2(360, 500)  # Center of play area
+	camera.zoom = Vector2(1, 1)
+	camera.position_smoothing_enabled = true
+	camera.position_smoothing_speed = 5.0
+	add_child(camera)
+	camera.make_current()
+
+func _setup_hacking_effects() -> void:
+	# Container for floating symbols
+	hacking_effects_container = Node2D.new()
+	hacking_effects_container.z_index = 50
+	add_child(hacking_effects_container)
+
+	# Timer for spawning symbols during hacking
+	hacking_symbols_timer = Timer.new()
+	hacking_symbols_timer.wait_time = 0.05
+	hacking_symbols_timer.timeout.connect(_spawn_hacking_symbol)
+	add_child(hacking_symbols_timer)
+
+func _spawn_hacking_symbol() -> void:
+	if not is_hacking:
+		return
+
+	var symbol = Label.new()
+	symbol.text = HACKING_SYMBOLS[randi() % HACKING_SYMBOLS.size()]
+	symbol.add_theme_font_size_override("font_size", randi_range(14, 28))
+
+	# Random green/cyan colors for hacker aesthetic
+	var colors = [Color(0.2, 1.0, 0.3), Color(0.3, 1.0, 0.5), Color(0.0, 0.9, 0.7), Color(0.5, 0.3, 1.0)]
+	symbol.add_theme_color_override("font_color", colors[randi() % colors.size()])
+
+	# Start from PC position with random X offset
+	symbol.position = workstation.position + Vector2(randf_range(-50, 50), -30)
+	symbol.z_index = 50
+	hacking_effects_container.add_child(symbol)
+
+	# Animate floating up and fading
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(symbol, "position:y", symbol.position.y - randf_range(80, 150), 1.0)
+	tween.tween_property(symbol, "position:x", symbol.position.x + randf_range(-30, 30), 1.0)
+	tween.tween_property(symbol, "modulate:a", 0.0, 1.0)
+	tween.chain().tween_callback(symbol.queue_free)
+
+func _start_hacking_effects() -> void:
+	is_hacking = true
+	hacking_symbols_timer.start()
+
+	# Zoom in for dramatic effect
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(camera, "zoom", Vector2(1.3, 1.3), 0.5)
+	tween.parallel().tween_property(camera, "position", workstation.position + Vector2(0, 50), 0.5)
+
+func _stop_hacking_effects() -> void:
+	is_hacking = false
+	hacking_symbols_timer.stop()
+
+	# Zoom back out
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(camera, "zoom", Vector2(1, 1), 0.3)
+	tween.parallel().tween_property(camera, "position", Vector2(360, 500), 0.3)
 
 func _setup_lighting() -> void:
 	# Darken the entire scene
@@ -277,7 +355,8 @@ func _connect_signals() -> void:
 	work_system.work_started.connect(_on_work_started)
 	work_system.work_progress.connect(_on_work_progress)
 	work_system.work_completed.connect(_on_work_completed)
-	work_system.bot_loop_tick.connect(_on_bot_loop_tick)
+	work_system.hacking_started.connect(_on_hacking_started)
+	work_system.hacking_completed.connect(_on_hacking_completed)
 
 func _on_joystick_input(direction: Vector2) -> void:
 	# Disable movement while working
@@ -313,10 +392,35 @@ func _on_bot_selected() -> void:
 	can_interact = false
 	_hide_indicator()
 
-func _on_bot_loop_tick(job_id: int) -> void:
-	# Update progress bar with current bot job
-	var job_info = work_system.get_job_info(job_id)
-	progress_bar.show_bar("BOT: " + job_info.get("name", "Working"))
+func _on_hacking_started() -> void:
+	# Show purple hacking progress bar
+	progress_bar.show_hacking()
+	_hide_indicator()
+	action_button.set_enabled(false)
+	_start_hacking_effects()
+	# Disable player movement completely
+	if player.has_meta("input"):
+		var input_comp: InputComponent = player.get_meta("input")
+		input_comp.is_active = false
+		input_comp.direction = Vector2.ZERO
+
+func _on_hacking_completed(reward: int) -> void:
+	# Update money display and check win condition
+	if player.has_meta("money"):
+		var money_comp: MoneyComponent = player.get_meta("money")
+		money_display.set_amount(money_comp.amount)
+
+		# Check for win
+		if money_comp.amount >= GOAL_AMOUNT and not game_won:
+			game_won = true
+			work_system.stop_bot()
+			_stop_hacking_effects()
+			progress_bar.hide_bar()
+			# Re-enable player movement
+			if player.has_meta("input"):
+				var input_comp: InputComponent = player.get_meta("input")
+				input_comp.is_active = true
+			win_screen.show_win()
 
 func _on_work_started(job_id: int) -> void:
 	var job_info = work_system.get_job_info(job_id)
@@ -328,9 +432,7 @@ func _on_work_progress(progress: float) -> void:
 	progress_bar.set_progress(progress)
 
 func _on_work_completed(reward: int) -> void:
-	# Don't hide progress bar if bot is running (it will show next job)
-	if not work_system.is_bot_running():
-		progress_bar.hide_bar()
+	progress_bar.hide_bar()
 
 	# Update money display and check win condition
 	if player.has_meta("money"):
@@ -351,13 +453,12 @@ func _on_work_completed(reward: int) -> void:
 			_show_milestone_dialog()
 			return
 
-	# Re-enable interaction if still near workstation (and not botting)
-	if not work_system.is_bot_running():
-		var nearby = interaction_system.get_nearby_workstation()
-		can_interact = nearby != null
-		action_button.set_enabled(can_interact)
-		if nearby:
-			_show_indicator()
+	# Re-enable interaction if still near workstation
+	var nearby = interaction_system.get_nearby_workstation()
+	can_interact = nearby != null
+	action_button.set_enabled(can_interact)
+	if nearby:
+		_show_indicator()
 
 func _show_milestone_dialog() -> void:
 	var lines: Array[String] = [

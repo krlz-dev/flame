@@ -7,8 +7,15 @@ var background: ColorRect
 var fill: ColorRect
 var label: Label
 var panel: PanelContainer
+var panel_style: StyleBoxFlat
 
 var progress: float = 0.0
+var is_hacking: bool = false
+
+const NORMAL_COLOR = Color(0.3, 0.7, 0.4)  # Green
+const HACKING_COLOR = Color(0.6, 0.2, 0.8)  # Purple
+const NORMAL_BORDER = Color(0.3, 0.5, 0.7)  # Blue
+const HACKING_BORDER = Color(0.8, 0.3, 0.9)  # Purple border
 
 func _ready() -> void:
 	visible = false
@@ -19,7 +26,7 @@ func _create_ui() -> void:
 	# Panel container
 	panel = PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var panel_style = StyleBoxFlat.new()
+	panel_style = StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.1, 0.1, 0.15, 0.9)
 	panel_style.corner_radius_top_left = 10
 	panel_style.corner_radius_top_right = 10
@@ -29,7 +36,7 @@ func _create_ui() -> void:
 	panel_style.border_width_right = 2
 	panel_style.border_width_top = 2
 	panel_style.border_width_bottom = 2
-	panel_style.border_color = Color(0.3, 0.5, 0.7)
+	panel_style.border_color = NORMAL_BORDER
 	panel.add_theme_stylebox_override("panel", panel_style)
 	add_child(panel)
 
@@ -78,7 +85,8 @@ func set_progress(value: float) -> void:
 	if fill:
 		fill.anchor_right = progress
 	if label:
-		label.text = "WORKING... %d%%" % int(progress * 100)
+		var status_text = "HACKING" if is_hacking else "WORKING"
+		label.text = "%s... %d%%" % [status_text, int(progress * 100)]
 
 func show_bar(job_name: String = "WORKING") -> void:
 	if label:
@@ -86,5 +94,22 @@ func show_bar(job_name: String = "WORKING") -> void:
 	set_progress(0)
 	visible = true
 
+func show_hacking() -> void:
+	is_hacking = true
+	if fill:
+		fill.color = HACKING_COLOR
+	if panel_style:
+		panel_style.border_color = HACKING_BORDER
+	if label:
+		label.text = "HACKING... 0%%"
+	set_progress(0)
+	visible = true
+
 func hide_bar() -> void:
 	visible = false
+	# Reset to normal mode
+	is_hacking = false
+	if fill:
+		fill.color = NORMAL_COLOR
+	if panel_style:
+		panel_style.border_color = NORMAL_BORDER
