@@ -1,0 +1,73 @@
+[gd_scene load_steps=7 format=3 uid="uid://main00001"]
+
+[ext_resource type="Script" uid="uid://c7a3e7coiu0pt" path="res://world.gd" id="1_world"]
+[ext_resource type="Script" uid="uid://c7cb0dye1pox3" path="res://joystick.gd" id="2_joystick"]
+[ext_resource type="Script" uid="uid://5b1fq5rsbv1d" path="res://ui/job_menu.gd" id="4_jobmenu"]
+[ext_resource type="Script" uid="uid://cd28k7eyaxixb" path="res://ui/work_progress_bar.gd" id="5_progress"]
+[ext_resource type="Script" uid="uid://voe85uja46ld" path="res://ui/money_display.gd" id="6_money"]
+[ext_resource type="Script" uid="uid://ceqosfipfni4f" path="res://ui/win_screen.gd" id="7_win"]
+
+[node name="World" type="Node2D"]
+script = ExtResource("1_world")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="UI" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MoneyDisplay" type="Control" parent="CanvasLayer/UI"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -170.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 70.0
+grow_horizontal = 0
+script = ExtResource("6_money")
+
+[node name="ProgressBar" type="Control" parent="CanvasLayer/UI"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -125.0
+offset_top = 100.0
+offset_right = 125.0
+offset_bottom = 160.0
+grow_horizontal = 2
+script = ExtResource("5_progress")
+
+[node name="Joystick" type="Control" parent="CanvasLayer/UI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("2_joystick")
+
+[node name="JobMenu" type="Control" parent="CanvasLayer/UI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_jobmenu")
+
+[node name="WinScreen" type="Control" parent="CanvasLayer/UI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("7_win")

@@ -23,6 +23,7 @@ var workstation: StaticBody2D
 @onready var progress_bar: WorkProgressBar = $CanvasLayer/UI/ProgressBar
 @onready var money_display: MoneyDisplay = $CanvasLayer/UI/MoneyDisplay
 @onready var win_screen: WinScreen = $CanvasLayer/UI/WinScreen
+var action_button: ActionButton
 
 # Dialog for milestones
 var dialog_container: Control
@@ -45,6 +46,7 @@ func _ready() -> void:
 	_setup_systems()
 	_create_entities()
 	_setup_interaction_indicator()
+	_setup_action_button()
 	_setup_lighting()
 	_setup_dialog()
 	_connect_signals()
@@ -214,12 +216,28 @@ func _setup_interaction_indicator() -> void:
 	interaction_indicator.add_theme_font_size_override("font_size", 48)
 	interaction_indicator.add_theme_color_override("font_color", Color(1, 0.9, 0.2))
 	interaction_indicator.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	interaction_indicator.position = workstation.position + Vector2(-15, -100)
+	interaction_indicator.position = workstation.position + Vector2(-5, -100)
 	interaction_indicator.visible = false
 	interaction_indicator.modulate.a = 0.0
 	interaction_indicator.z_index = 100
 	interaction_indicator.pivot_offset = Vector2(15, 24)  # Center pivot for shake
 	add_child(interaction_indicator)
+
+func _setup_action_button() -> void:
+	# Create pixel art Enter key action button in bottom-right corner
+	# Button is 128x128 scaled to 0.75 = 96x96 display size
+	action_button = ActionButton.new()
+	action_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	action_button.anchor_left = 1.0
+	action_button.anchor_top = 1.0
+	action_button.anchor_right = 1.0
+	action_button.anchor_bottom = 1.0
+	action_button.offset_left = -126  # 96 (button) + 30 margin
+	action_button.offset_top = -136   # 96 (button) + 40 margin from bottom
+	action_button.offset_right = -30
+	action_button.offset_bottom = -40
+	action_button.action_pressed.connect(_on_action_button_pressed)
+	$CanvasLayer/UI.add_child(action_button)
 
 func _show_indicator() -> void:
 	if indicator_tween:
@@ -237,7 +255,7 @@ func _hide_indicator() -> void:
 
 func _shake_indicator() -> void:
 	var shake_tween = create_tween()
-	var original_pos = workstation.position + Vector2(-15, -100)
+	var original_pos = workstation.position + Vector2(-5, -100)
 	shake_tween.tween_property(interaction_indicator, "position", original_pos + Vector2(-5, 0), 0.05)
 	shake_tween.tween_property(interaction_indicator, "position", original_pos + Vector2(5, 0), 0.05)
 	shake_tween.tween_property(interaction_indicator, "position", original_pos + Vector2(-3, 0), 0.05)
@@ -269,26 +287,21 @@ func _on_joystick_input(direction: Vector2) -> void:
 		input_system.receive_input(direction)
 
 func _on_player_near_workstation(_workstation: Node, is_near: bool) -> void:
-	# Show/hide interaction indicator based on proximity
+	# Show/hide interaction indicator and enable/disable action button based on proximity
 	if not work_system.is_working():
 		can_interact = is_near
+		action_button.set_enabled(is_near)
 		if is_near:
 			_show_indicator()
 		else:
 			_hide_indicator()
 
-func _input(event: InputEvent) -> void:
-	# Handle touch on workstation to interact
-	if event is InputEventScreenTouch and event.pressed:
-		if can_interact and not work_system.is_working():
-			# Check if touch is near workstation
-			var touch_pos = event.position
-			var ws_screen_pos = workstation.get_global_transform_with_canvas().origin
-			var distance = touch_pos.distance_to(ws_screen_pos)
-			if distance < 150:  # Touch radius around workstation
-				_shake_indicator()
-				job_menu.show_menu()
-				get_viewport().set_input_as_handled()
+func _on_action_button_pressed() -> void:
+	# Trigger workstation interaction when Enter button is pressed
+	if can_interact and not work_system.is_working():
+		_shake_indicator()
+		job_menu.show_menu()
+
 
 func _on_job_selected(job_id: int) -> void:
 	# Start the selected job
@@ -309,6 +322,7 @@ func _on_work_started(job_id: int) -> void:
 	var job_info = work_system.get_job_info(job_id)
 	progress_bar.show_bar(job_info.get("name", "Working"))
 	_hide_indicator()
+	action_button.set_enabled(false)
 
 func _on_work_progress(progress: float) -> void:
 	progress_bar.set_progress(progress)
@@ -341,6 +355,7 @@ func _on_work_completed(reward: int) -> void:
 	if not work_system.is_bot_running():
 		var nearby = interaction_system.get_nearby_workstation()
 		can_interact = nearby != null
+		action_button.set_enabled(can_interact)
 		if nearby:
 			_show_indicator()
 
@@ -367,6 +382,7 @@ func _on_milestone_dialog_finished() -> void:
 	# Re-enable interaction if still near workstation
 	var nearby = interaction_system.get_nearby_workstation()
 	can_interact = nearby != null
+	action_button.set_enabled(can_interact)
 	if nearby:
 		_show_indicator()
 

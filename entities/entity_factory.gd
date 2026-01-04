@@ -4,17 +4,9 @@ extends RefCounted
 ## Factory to create entities with components
 
 const CHARACTER_PATH = "res://assets/character/"
-const DIRECTIONS = ["south", "west", "east", "north"]
+const DIRECTIONS = ["south", "south-west", "west", "north-west", "north", "north-east", "east", "south-east"]
 const WALK_FRAMES = 8
 const ANIMATION_FPS = 10.0
-
-# Map directions to available walk animations (now have all 4 main directions)
-const WALK_DIR_MAP = {
-	"south": "south",
-	"west": "west",
-	"east": "east",
-	"north": "north"
-}
 
 static func create_player(pos: Vector2) -> CharacterBody2D:
 	var entity = CharacterBody2D.new()
@@ -79,7 +71,7 @@ static func _create_sprite_frames() -> SpriteFrames:
 	if frames.has_animation("default"):
 		frames.remove_animation("default")
 
-	# Create idle animations (using rotation images)
+	# Create idle animations (using rotation images) for all 8 directions
 	for dir in DIRECTIONS:
 		var anim_name = "idle_" + dir
 		frames.add_animation(anim_name)
@@ -90,25 +82,18 @@ static func _create_sprite_frames() -> SpriteFrames:
 		if texture:
 			frames.add_frame(anim_name, texture)
 
-	# Create walk animations
+	# Create walk animations for all 8 directions
 	for dir in DIRECTIONS:
 		var anim_name = "walk_" + dir
 		frames.add_animation(anim_name)
 		frames.set_animation_loop(anim_name, true)
 		frames.set_animation_speed(anim_name, ANIMATION_FPS)
 
-		var source_dir = WALK_DIR_MAP[dir]
-		var should_flip = (dir == "east")  # Flip west to make east
-
 		for i in range(WALK_FRAMES):
-			var frame_path = CHARACTER_PATH + "animations/walking-8-frames/" + source_dir + "/frame_%03d.png" % i
+			var frame_path = CHARACTER_PATH + "animations/walking-8-frames/" + dir + "/frame_%03d.png" % i
 			var texture = _load_texture(frame_path)
 			if texture:
-				if should_flip:
-					# Create flipped version using AtlasTexture hack or just add and flip in sprite
-					frames.add_frame(anim_name, texture)
-				else:
-					frames.add_frame(anim_name, texture)
+				frames.add_frame(anim_name, texture)
 
 	return frames
 
@@ -164,7 +149,8 @@ static func create_workstation(pos: Vector2, ws_size: Vector2 = Vector2(96, 96))
 
 	# Add workstation component
 	var workstation = WorkstationComponent.new()
-	workstation.interaction_radius = 120.0
+	workstation.interaction_radius = 20.0  # Must be close to PC to interact
+	workstation.interaction_offset = Vector2(0, 50)  # Interaction point in front of desk
 	workstation.attach(entity)
 	entity.set_meta("workstation", workstation)
 

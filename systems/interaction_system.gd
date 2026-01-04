@@ -19,7 +19,8 @@ func process_system(_delta: float) -> void:
 
 	for entity in get_entities():
 		var workstation_comp: WorkstationComponent = entity.get_meta("workstation")
-		var distance = player.position.distance_to(entity.position)
+		var interaction_point = entity.position + workstation_comp.interaction_offset
+		var distance = player.position.distance_to(interaction_point)
 		var was_nearby = workstation_comp.is_player_nearby
 		workstation_comp.is_player_nearby = distance <= workstation_comp.interaction_radius
 
